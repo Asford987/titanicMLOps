@@ -1,0 +1,6 @@
+terraform/
+.github/
+.venv/
+*.pyc
+*.csv
+notebooks/
