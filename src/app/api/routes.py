@@ -4,39 +4,39 @@ import mlflow
 from fastapi import APIRouter, Query
 import time
 
-from app import model_store
-from app.mlflow_utils import log_inference
-from app.models import LoadModelRequest, PredictRequest, PredictResponse
-from app.utils import ABTestMode, choose_variant
+from app.serve import model_server
+from app.loggers.extensions.mlflow import log_inference
+from app.api.models import LoadModelRequest, PredictRequest, PredictResponse
+from app.serve.ab_test.ab import ABTestMode, choose_variant
 
 router = APIRouter()
 
 @router.post("/predict", response_model=PredictResponse)
 async def predict(request: PredictRequest, user_id: str = None):
     input_dict = request.model_dump()
-    if model_store.ab_testing_enabled:
+    if model_server.ab_testing_enabled:
         variant = choose_variant(user_id)
     else:
         variant = "B"
 
 
     if variant == "A":
-        model = model_store.model_A
-        batcher = model_store.batcher_A
-        run_id = model_store.current_parent_run_id_A
-        model_version = model_store.current_model_version_A
+        model = model_server.model_A
+        batcher = model_server.batcher_A
+        run_id = model_server.current_parent_run_id_A
+        model_version = model_server.current_model_version_A
     else:
-        model = model_store.model_B
-        batcher = model_store.batcher_B
-        run_id = model_store.current_parent_run_id_B
-        model_version = model_store.current_model_version_B
+        model = model_server.model_B
+        batcher = model_server.batcher_B
+        run_id = model_server.current_parent_run_id_B
+        model_version = model_server.current_model_version_B
 
-    if model_store.inference_mode == "batch":
+    if model_server.inference_mode == "batch":
         prediction = await batcher.queue_request(input_dict, run_id, variant, model_version)
     else:
         df = pd.DataFrame([input_dict])
         
-        preprocessor = model_store.preprocessor_A if variant == "A" else model_store.preprocessor_B
+        preprocessor = model_server.preprocessor_A if variant == "A" else model_server.preprocessor_B
         
         X = preprocessor.transform(df)
         
@@ -65,7 +65,7 @@ async def history():
 @router.post("/load")
 async def load(request: LoadModelRequest):
     import joblib
-    from app import model_store
+    from app.serve import model_server
 
     model = joblib.load(request.model_path)
     preproc_path = request.model_path.replace(".pkl", "_preproc.pkl")
@@ -77,11 +77,11 @@ async def load(request: LoadModelRequest):
     mlflow.log_param("source_path", request.model_path)
     mlflow.log_param("preprocessor_path", preproc_path)
 
-    model_obj = model_store.Model(model, preprocessor, request.version, run.info.run_id)
+    model_obj = model_server.Model(model, preprocessor, request.version, run.info.run_id)
 
-    model_store.current_model = model_obj
-    model_store.loaded_models[request.version] = model_obj
-    model_store.ab_testing_enabled = False  # reset A/B on new load
+    model_server.current_model = model_obj
+    model_server.loaded_models[request.version] = model_obj
+    model_server.ab_testing_enabled = False  # reset A/B on new load
 
     return {
         "status": "Model loaded",
@@ -97,28 +97,33 @@ async def setup_ab_test(
     model_a_version: str = None,
     mode: ABTestMode = Query(ABTestMode.split)
 ):
-    from app import model_store
+    from app.serve import model_server
 
-    if model_b_version not in model_store.loaded_models:
+    if model_b_version not in model_server.loaded_models:
         return {"error": f"Model B version '{model_b_version}' not found."}
 
-    model_store.model_B = model_store.loaded_models[model_b_version]
+    model_server.model_B = model_server.loaded_models[model_b_version]
 
     if model_a_version:
-        if model_a_version not in model_store.loaded_models:
+        if model_a_version not in model_server.loaded_models:
             return {"error": f"Model A version '{model_a_version}' not found."}
-        model_store.model_A = model_store.loaded_models[model_a_version]
+        model_server.model_A = model_server.loaded_models[model_a_version]
     else:
-        if model_store.current_model is None:
+        if model_server.current_model is None:
             return {"error": "No current model to use as A."}
-        model_store.model_A = model_store.current_model
+        model_server.model_A = model_server.current_model
 
-    model_store.ab_testing_enabled = True
-    model_store.ab_test_mode = mode
+    model_server.ab_testing_enabled = True
+    model_server.ab_test_mode = mode
 
     return {
         "status": "A/B test enabled",
         "mode": mode,
-        "model_A_version": model_store.model_A.version,
-        "model_B_version": model_store.model_B.version
+        "model_A_version": model_server.model_A.version,
+        "model_B_version": model_server.model_B.version
     }
+    
+    
+@router.get("/health")
+async def health():
+    return {"status": "ok"}

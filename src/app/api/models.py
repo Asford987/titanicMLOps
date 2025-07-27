@@ -9,4 +9,5 @@ class PredictResponse(BaseModel):
 
 class LoadModelRequest(BaseModel):
     model_path: str
+    preprocessor_path: str
     version: str

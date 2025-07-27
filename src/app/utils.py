@@ -1,12 +1,5 @@
-from enum import Enum
 import logging
-import random
 import time
-
-def choose_variant(user_id: str = None) -> str:
-    if user_id:
-        return "A" if hash(user_id) % 2 == 0 else "B"
-    return "A" if random.random() < 0.5 else "B"
 
 
 class Timer:
@@ -41,7 +34,3 @@ def apply_colored_formatter():
     for handler in logging.getLogger().handlers:
         handler.setFormatter(ColoredFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         
-
-class ABTestMode(str, Enum):
-    split = "split"       # 50/50 routing
-    shadow = "shadow"     # A serves; B logs only
