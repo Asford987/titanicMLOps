@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 import uvicorn
 
-from app.serve import model_server
+from app.serve.model_server import model_manager, ModelServiceProviderConfigs
 from app.loggers.extensions.mlflow import init_mlflow
 from app.loggers.extensions.prometheus import setup_prometheus
 from .api import routes
@@ -16,15 +16,22 @@ app.include_router(routes.router)
 
 @app.on_event("startup")
 def configure():
-    mode = os.getenv("INFERENCE_MODE", "single").lower()
-    if mode not in {"single", "batch"}:
-        raise ValueError("INFERENCE_MODE must be 'single' or 'batch'")
-    model_server.inference_mode = mode
-
-    init_mlflow(model_version="initial", source_path="initial_model")
+    use_mlflow = os.getenv("USE_MLFLOW", "true").lower() == "true"
+    if use_mlflow:
+        init_mlflow()
     use_prometheus = os.getenv("USE_PROMETHEUS", "false").lower() == "true"
     if use_prometheus:
         setup_prometheus(app)
+    batch_size = int(os.getenv("BATCH_SIZE", "16"))
+
+    model_manager.set_configs(
+        ModelServiceProviderConfigs(
+            log_mlflow=use_mlflow,
+            log_prometheus=use_prometheus,
+            batch_size=batch_size
+        )
+    )
+
 
 
 if __name__ == "__main__":
