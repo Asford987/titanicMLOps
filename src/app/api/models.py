@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.serve.ab_test.ab import ABTestMode
+
 class PredictRequest(BaseModel):
     feature1: float
     feature2: float
@@ -18,6 +20,8 @@ class DeployModelRequest(BaseModel):
     pass
 
 class ABTestRequest(BaseModel):
+    model_a_name: str
     model_a_version: str
+    model_b_name: str
     model_b_version: str
-    mode: str  # This could be an enum for ABTestMode, but kept as string for simplicity
+    mode: ABTestMode

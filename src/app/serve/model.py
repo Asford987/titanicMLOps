@@ -5,9 +5,10 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.pipeline import Pipeline
 from app.api.models import PredictRequest
-from app.loggers import log_inference
+from app.loggers import log_inference, log_history
 from app.loggers.extensions.base import LoggingExtension
-from app.loggers.history.base import HistoryBase, log_history
+from app.loggers.history.base import HistoryBase
+from app.loggers.history.lite import history_sqlite
 from app.utils import Timer
 
 
@@ -26,7 +27,7 @@ class Model:
         self.version = version
         self.model_name = model_name
         self.loggers = loggers or []
-        self.histories = histories or []
+        self.histories = histories or [history_sqlite]
         self.variant = variant
 
     def predict(self, X: list[RequestItem]):

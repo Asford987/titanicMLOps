@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.serve.model_server import model_manager
+from app.serve.model_server import model_hub
 from app.serve.inference import runner
 from app.api.models import LoadModelRequest, PredictRequest, PredictResponse, DeployModelRequest, ABTestRequest
 
@@ -16,8 +16,8 @@ async def predict(request: PredictRequest, user_id: str = None):
 @router.get("/history")
 async def history():
     # Replace with history fetching logic
-    pass
-
+    response = await model_hub.configs.histories[0].fetch_history()
+    return response
 
 @router.post("/load")
 async def load(request: LoadModelRequest):
@@ -31,7 +31,7 @@ async def load(request: LoadModelRequest):
     version = request.version
     name = request.name
     try:
-        model_manager.register_model(model, preprocessor, version, name)
+        model_hub.register_model(model, preprocessor, version, name)
     except ValueError:
         return {}
     return {}
@@ -40,9 +40,9 @@ async def load(request: LoadModelRequest):
 async def deploy(request: DeployModelRequest):
     name = request.name
     version = request.version
-    if not model_manager.is_model_registered(name, version):
+    if not model_hub.is_model_registered(name, version):
         return {"error": f"Model {name} version {version} is not registered."}
-    model = model_manager.load_model(name, version)
+    model = model_hub.load_model(name, version)
     return {
         "status": "Model deployed successfully",
         "model_name": model.model_name,
@@ -53,11 +53,13 @@ async def deploy(request: DeployModelRequest):
 
 @router.post("/ab-test")
 async def setup_ab_test(request: ABTestRequest):
-    # set up A/B test on model_manager
-    model_manager.load_ab_test_models()
-
-    # set up A/B test on runner
-    runner.setup_ab_test(request)
+    model_A, model_B = model_hub.load_ab_test_models(**request.model_dump())
+    runner.set_configs(ab_test_mode=request.mode)
+    runner.deprecate_current_batchers()
+    runner.new_batcher(model_A)
+    runner.new_batcher(model_B)
+    
+    
 
 
 @router.get("/health")

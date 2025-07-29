@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 import uvicorn
 
-from app.serve.model_server import model_manager, ModelServiceProviderConfigs
+from app.serve.model_server import model_hub, ModelServiceProviderConfigs
 from app.loggers.extensions.mlflow import init_mlflow
 from app.loggers.extensions.prometheus import setup_prometheus
 from .api import routes
@@ -24,7 +24,7 @@ def configure():
         setup_prometheus(app)
     batch_size = int(os.getenv("BATCH_SIZE", "16"))
 
-    model_manager.set_configs(
+    model_hub.set_configs(
         ModelServiceProviderConfigs(
             log_mlflow=use_mlflow,
             log_prometheus=use_prometheus,

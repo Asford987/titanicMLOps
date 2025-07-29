@@ -4,13 +4,16 @@ from sklearn.pipeline import Pipeline
 
 from app.loggers.extensions.base import LoggingExtension
 from app.loggers.extensions.mlflow import log_model_to_mlflow_and_register
+from app.loggers.history.base import HistoryBase
+from app.loggers.history.lite import history_sqlite
 from app.serve.model import Model
 
     
 
 class ModelServiceProviderConfigs:
-    def __init__(self, extensions: list[LoggingExtension] = None):
+    def __init__(self, extensions: list[LoggingExtension] | None = None, histories: list[HistoryBase] | None = None):
         self.extensions = extensions or []
+        self.histories = histories or [history_sqlite]
     
 
 class ModelServiceProvider:
@@ -45,15 +48,15 @@ class ModelServiceProvider:
 
     def load_model(self, model_name: str, version: str):
         self.new_experiment(ab_testing=False, model_name=f"{model_name}__{version}")
-        return Model(*self._loaded_models[f"{model_name}({version})"], version, model_name, loggers=self.configs.extensions)
+        return Model(*self._loaded_models[f"{model_name}({version})"], version, model_name, loggers=self.configs.extensions, histories=self.configs.histories)
 
-    def load_ab_test_models(self, model_a, version_a, model_b, version_b):
+    def load_ab_test_models(self, model_a, version_a, model_b, version_b, **kwargs):
         self.new_experiment(ab_testing=True, model_name_a=f"{model_a}__{version_a}", model_name_b=f"{model_b}__{version_b}")
         return (
-            Model(*self._loaded_models[f"{model_a}({version_a})"], version_a, model_a, "A", loggers=self.configs.extensions),
-            Model(*self._loaded_models[f"{model_b}({version_b})"], version_b, model_b, "B", loggers=self.configs.extensions)
+            Model(*self._loaded_models[f"{model_a}({version_a})"], version_a, model_a, "A", loggers=self.configs.extensions, histories=self.configs.histories),
+            Model(*self._loaded_models[f"{model_b}({version_b})"], version_b, model_b, "B", loggers=self.configs.extensions, histories=self.configs.histories)
         )
 
 
 
-model_manager = ModelServiceProvider(ModelServiceProviderConfigs())
+model_hub = ModelServiceProvider(ModelServiceProviderConfigs())
