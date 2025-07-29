@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sqlite3
 from sqlite3 import Connection, Error
@@ -5,6 +6,7 @@ from typing import Optional, List, Tuple, Any
 
 from app.loggers.history.base import HistoryBase
 
+lock = asyncio.Lock()
 
 class HistorySQLite(HistoryBase):
     def __init__(self, db_file: str) -> None:
@@ -55,14 +57,16 @@ class HistorySQLite(HistoryBase):
         if not self.conn:
             logging.error("No connection available.")
             return
+        
         try:
             sql_insert_history = """
             INSERT INTO history (model_name, variant, model_version, input_data, prediction)
             VALUES (?, ?, ?, ?, ?);
             """
-            cursor = self.conn.cursor()
-            cursor.execute(sql_insert_history, (model_name, variant, model_version, input_data, prediction))
-            self.conn.commit()
+            with lock:
+                cursor = self.conn.cursor()
+                cursor.execute(sql_insert_history, (model_name, variant, model_version, input_data, prediction))
+                self.conn.commit()
         except sqlite3.Error as e:
             logging.error(f"Error inserting history: {e}")
             self.conn.rollback()

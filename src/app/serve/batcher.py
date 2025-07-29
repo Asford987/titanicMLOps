@@ -3,14 +3,11 @@ import logging
 import time
 import pandas as pd
 
-from app.loggers.history.base import HistoryBase
-from app.loggers.history.db import history_sqlite
-from app.serve import model_server
-from app.serve.model import RequestItem
+from app.serve.model import Model, RequestItem
 
 
 class Batcher:
-    def __init__(self, model: model_server.Model, batch_size: int = 16, 
+    def __init__(self, model: Model, batch_size: int = 16, 
                  batch_timeout: float = 0.05):
         self.queue: list[RequestItem] = []
         self.batch_size = batch_size

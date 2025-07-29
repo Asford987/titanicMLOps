@@ -9,16 +9,8 @@ from app.serve.model import Model
     
 
 class ModelServiceProviderConfigs:
-    def __init__(self, extensions: list[LoggingExtension] = None, batch_size: int = 16):
+    def __init__(self, extensions: list[LoggingExtension] = None):
         self.extensions = extensions or []
-        self.batch_size = batch_size
-        self._ab_testing_enabled = False
-
-    def use_ab_testing(self, enabled: bool):
-        self._ab_testing_enabled = enabled
-
-    def is_ab_testing_enabled(self):
-        return self._ab_testing_enabled
     
 
 class ModelServiceProvider:
@@ -27,7 +19,6 @@ class ModelServiceProvider:
         self.configs = configs
 
     def new_experiment(self, ab_testing: bool = False, **kwargs):
-        self.configs.use_ab_testing(ab_testing)
         if ab_testing:
             name = f"ab_testing-{kwargs['model_name_a']}-{kwargs['model_name_b']}"
         else:

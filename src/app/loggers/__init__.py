@@ -1,6 +1,4 @@
 from app.loggers.extensions.base import LoggingExtension
-from app.loggers.extensions.mlflow import MLFlowLogger     
-from app.loggers.extensions.prometheus import PrometheusLogger
 from app.loggers.history.base import HistoryBase
 
 
