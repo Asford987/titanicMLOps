@@ -49,12 +49,34 @@ class InferenceRunner:
             return self._running_models[key]
         else:
             raise ValueError(f"Batcher {key} not found.")
-        
-    async def _get_batcher_for_inference(self) -> Batcher | tuple[Batcher, Batcher]:
-        pass
+     
+    def _find_non_deprecated_batchers(self) -> dict[str, Batcher]:
+        return {key: batcher for key, batcher in self._running_models.items() if not key.endswith("_deprecated")}
+
+    def get_active_deploy_batcher(self) -> Batcher:
+        active_batchers = self._find_non_deprecated_batchers()
+        if not active_batchers:
+            raise ValueError("No active batchers found.")
+        # Return the first active batcher
+        return next(iter(active_batchers.values()))
+       
+    async def get_batcher_for_inference(self) -> Batcher | tuple[Batcher, Batcher]:
+        active_batchers = self._find_non_deprecated_batchers()
+        if not active_batchers:
+            raise ValueError("No active batchers found.")
+        if self.runner_configs.ab_test_mode is not None:
+            key_A = [key for key in active_batchers.keys() if key.endswith("-A")]
+            key_B = [key for key in active_batchers.keys() if key.endswith("-B")]
+            if not key_A or not key_B:
+                raise ValueError("No active batchers found for A/B testing.")
+            return tuple(active_batchers[key_A[0]], active_batchers[key_B[0]])
+        else:
+            # Return the first active batcher
+            return next(iter(active_batchers.values()))
+
 
     async def run_inference(self, request: PredictRequest, user_id: str) -> PredictResponse:
-        batcher = await self._get_batcher_for_inference()
+        batcher = await self.get_batcher_for_inference()
         if self.runner_configs.ab_test_mode is not None:
             batcher_A, batcher_B = batcher
             runner = ABTestWrapper(batcher_A, batcher_B, ab_test_mode=self.runner_configs.ab_test_mode)

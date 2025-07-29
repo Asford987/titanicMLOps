@@ -3,6 +3,7 @@ import logging
 import time
 import pandas as pd
 
+from app.api.models import PredictRequest
 from app.serve.model import Model, RequestItem
 
 
@@ -15,8 +16,8 @@ class Batcher:
         self.model = model
         self._safe_batch_loop()
 
-    async def queue_request(self, input_data, run_id, variant, model_version):
-        item = RequestItem(input_data, run_id, variant, model_version)
+    async def queue_request(self, input_data: PredictRequest):
+        item = RequestItem(input_data.model_dump())
         self.queue.append(item)
         return await item.future
 
@@ -58,7 +59,7 @@ class Batcher:
             self.model.predict(inputs)
             
     def __repr__(self):
-        return f"{self.model_name}({self.version})"
+        return f"Batcher<{self.model.model_name}({self.model.version})>"
     
     def is_empty(self):
         return len(self.batcher.queue) == 0

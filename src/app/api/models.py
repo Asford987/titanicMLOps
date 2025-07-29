@@ -3,11 +3,19 @@ from pydantic import BaseModel
 from app.serve.ab_test.ab import ABTestMode
 
 class PredictRequest(BaseModel):
-    feature1: float
-    feature2: float
+    Pclass: int
+    Name: str
+    Sex: str
+    Age: int
+    SibSp: int
+    Parch: int
+    Ticket: str
+    Fare: float
+    Cabin: str
+    Embarked: str
 
 class PredictResponse(BaseModel):
-    prediction: float
+    survived: float
 
 class LoadModelRequest(BaseModel):
     model_path: str
@@ -17,11 +25,28 @@ class LoadModelRequest(BaseModel):
 
 
 class DeployModelRequest(BaseModel):
-    pass
+    model_name: str
+    model_version: str
+    # model_variant: Literal["deploy"]
 
 class ABTestRequest(BaseModel):
-    model_a_name: str
-    model_a_version: str
-    model_b_name: str
-    model_b_version: str
+    name_a: str | None = None
+    version_a: str | None = None
+    name_b: str
+    version_b: str
     mode: ABTestMode
+    
+class LoadModelResponse(BaseModel):
+    model_name: str
+    model_version: str
+    mlflow_version: str | None
+    status: str
+    
+class DeployModelResponse(BaseModel):
+    status: str
+    model_name: str
+    model_version: str
+    variant: str | None
+    
+class ABTestResponse(BaseModel):
+    pass
