@@ -3,17 +3,18 @@ import logging
 import time
 import pandas as pd
 
+from app.loggers.history.base import HistoryBase
+from app.loggers.history.db import history_sqlite
 from app.serve import model_server
 from app.serve.model import RequestItem
 
 
 class Batcher:
-    def __init__(self, model: model_server.Model, batch_size: int = 16, batch_timeout: float = 0.05, on_mlflow_log: bool = True, on_prometheus_log: bool = False):
+    def __init__(self, model: model_server.Model, batch_size: int = 16, 
+                 batch_timeout: float = 0.05):
         self.queue: list[RequestItem] = []
         self.batch_size = batch_size
         self.batch_timeout = batch_timeout
-        self.on_mlflow_log = on_mlflow_log
-        self.on_prometheus_log = on_prometheus_log
         self.model = model
         self._safe_batch_loop()
 
@@ -57,24 +58,10 @@ class Batcher:
             
             inputs = pd.DataFrame([item.input_data for item in batch])
             
-            # with Timer() as timer:
-            #     preds = self.model.predict(inputs)
-
-            # for item, pred in zip(batch, preds):
-            #     total_latency = time.perf_counter_ns() - item.start_time
-            #     wait_time = timer.start_time - item.start_time
-            #     log_inference(
-            #         run_id=self.model.run_id,
-            #         input_data=item.input_data,
-            #         prediction=item.prediction,
-            #         latency=total_latency * 1000,
-            #         variant=item.variant,
-            #         model_version=self.model.model_version,
-            #         wait_time=wait_time * 1000,
-            #         inference_time=timer.elapsed_time * 1000,
-            #         on_mlflow_log=self.on_mlflow_log,
-            #         on_prometheus_log=self.on_prometheus_log
-            #     )
-                
-            #     item.future.set_result(pred)
             self.model.predict(inputs)
+            
+    def __repr__(self):
+        return f"{self.model_name}({self.version})"
+    
+    def is_empty(self):
+        return len(self.batcher.queue) == 0

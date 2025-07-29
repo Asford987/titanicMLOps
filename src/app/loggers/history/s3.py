@@ -62,12 +62,11 @@ class HistoryS3:
 
     def insert_history(
         self,
-        run_id: str,
+        model_name: str,
         variant: str,
         model_version: str,
         input_data: str,
-        start_time: int,
-        end_time: int,
+        prediction: float
     ) -> None:
         """
         Inserts a new history record by loading the current file,
@@ -78,12 +77,11 @@ class HistoryS3:
         new_id = history[-1]["id"] + 1 if history else 1
         new_record = {
             "id": new_id,
-            "run_id": run_id,
+            "model_name": model_name,
             "variant": variant,
             "model_version": model_version,
             "input_data": input_data,
-            "start_time": start_time,
-            "end_time": end_time,
+            "prediction": prediction,
         }
         history.append(new_record)
         self._save_history(history)

@@ -1,21 +1,22 @@
-from typing import Literal
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
 from app.serve.model_server import model_manager
+from app.serve.inference import runner
 from app.api.models import LoadModelRequest, PredictRequest, PredictResponse, DeployModelRequest, ABTestRequest
-from app.serve.ab_test.ab import ABTestMode, choose_variant
+
 
 router = APIRouter()
 
 @router.post("/predict", response_model=PredictResponse)
 async def predict(request: PredictRequest, user_id: str = None):
-    pass
+    response = await runner.run_inference(request, user_id)
+    return response
 
 
 @router.get("/history")
 async def history():
     # Replace with history fetching logic
-    return {"history": []}
+    pass
 
 
 @router.post("/load")
@@ -50,41 +51,15 @@ async def deploy(request: DeployModelRequest):
     }
 
 
-AlgorithmsType = Literal["random", "fixed"]
-
 @router.post("/ab-test")
-async def setup_ab_test(
-    request: ABTestRequest,
-):
+async def setup_ab_test(request: ABTestRequest):
+    # set up A/B test on model_manager
     model_manager.load_ab_test_models()
-    # from app.serve import model_server
 
-    # if model_b_version not in model_server.loaded_models:
-    #     return {"error": f"Model B version '{model_b_version}' not found."}
+    # set up A/B test on runner
+    runner.setup_ab_test(request)
 
-    # model_server.model_B = model_server.loaded_models[model_b_version]
 
-    # if model_a_version:
-    #     if model_a_version not in model_server.loaded_models:
-    #         return {"error": f"Model A version '{model_a_version}' not found."}
-    #     model_server.model_A = model_server.loaded_models[model_a_version]
-    # else:
-    #     if model_server.current_model is None:
-    #         return {"error": "No current model to use as A."}
-    #     model_server.model_A = model_server.current_model
-
-    # model_server.ab_testing_enabled = True
-    # model_server.ab_test_mode = mode
-
-    # return {
-    #     "status": "A/B test enabled",
-    #     "mode": mode,
-    #     "model_A_version": model_server.model_A.version,
-    #     "model_B_version": model_server.model_B.version
-    # }
-    pass
-
-    
 @router.get("/health")
 async def health():
     return {"status": "ok"}

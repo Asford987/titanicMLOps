@@ -2,17 +2,10 @@ from app.serve.batcher import Batcher
 
 
 class _RunningModel:
-    def __init__(self, model_name: str, version: str):
+    def __init__(self):
         self.model_name = model_name
         self.version = version
-        self.batcher = Batcher()
-
-    def __repr__(self):
-        return f"{self.model_name}({self.version})"
-    
-    def is_empty(self):
-        return len(self.batcher.queue) == 0
-    
+        self.batcher = Batcher()    
     
 
 class InferenceRunner:

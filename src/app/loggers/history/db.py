@@ -3,8 +3,10 @@ import sqlite3
 from sqlite3 import Connection, Error
 from typing import Optional, List, Tuple, Any
 
+from app.loggers.history.base import HistoryBase
 
-class HistorySQLite:
+
+class HistorySQLite(HistoryBase):
     def __init__(self, db_file: str) -> None:
         self.db_file: str = db_file
         self.conn: Optional[Connection] = None
@@ -29,12 +31,11 @@ class HistorySQLite:
             sql_create_history_table = """
             CREATE TABLE IF NOT EXISTS history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id TEXT NOT NULL,
+                model_name TEXT NOT NULL,
                 variant TEXT NOT NULL,
                 model_version TEXT NOT NULL,
                 input_data TEXT NOT NULL,
-                start_time INTEGER NOT NULL,
-                end_time INTEGER NOT NULL
+                prediction FLOAT NOT NULL
             );
             """
             cursor = self.conn.cursor()
@@ -45,23 +46,22 @@ class HistorySQLite:
 
     def insert_history(
         self,
-        run_id: str,
+        model_name: str,
         variant: str,
         model_version: str,
         input_data: str,
-        start_time: int,
-        end_time: int
+        prediction: float
     ) -> None:
         if not self.conn:
             logging.error("No connection available.")
             return
         try:
             sql_insert_history = """
-            INSERT INTO history (run_id, variant, model_version, input_data, start_time, end_time)
-            VALUES (?, ?, ?, ?, ?, ?);
+            INSERT INTO history (model_name, variant, model_version, input_data, prediction)
+            VALUES (?, ?, ?, ?, ?);
             """
             cursor = self.conn.cursor()
-            cursor.execute(sql_insert_history, (run_id, variant, model_version, input_data, start_time, end_time))
+            cursor.execute(sql_insert_history, (model_name, variant, model_version, input_data, prediction))
             self.conn.commit()
         except sqlite3.Error as e:
             logging.error(f"Error inserting history: {e}")
@@ -86,3 +86,6 @@ class HistorySQLite:
         except sqlite3.Error as e:
             logging.error(f"Error fetching history: {e}")
             return []
+        
+        
+history_sqlite = HistorySQLite("data/deploy/history.db")

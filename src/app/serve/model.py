@@ -6,6 +6,8 @@ from sklearn.base import BaseEstimator
 from sklearn.pipeline import Pipeline
 from app.api.models import PredictRequest
 from app.loggers import log_inference
+from app.loggers.extensions.base import LoggingExtension
+from app.loggers.history.base import HistoryBase, log_history
 from app.utils import Timer
 
 
@@ -18,13 +20,13 @@ class RequestItem:
 
 class Model:
     def __init__(self, model: BaseEstimator, preprocessor: Pipeline, version: str, 
-                 model_name: str, variant: str = 'deploy', log_on_prometheus: bool = False, log_on_mlflow: bool = True):
+                 model_name: str, variant: str = 'deploy', *, loggers: list[LoggingExtension] = None, histories: list[HistoryBase] = None):
         self.model = model
         self.preprocessor = preprocessor
         self.version = version
         self.model_name = model_name
-        self.log_on_prometheus = log_on_prometheus
-        self.log_on_mlflow = log_on_mlflow
+        self.loggers = loggers or []
+        self.histories = histories or []
         self.variant = variant
 
     def predict(self, X: list[RequestItem]):
@@ -38,7 +40,7 @@ class Model:
             total_latency = time.perf_counter_ns() - item.start_time
             wait_time = timer.start_time - item.start_time
             log_inference(
-                run_id=self.model.run_id,
+                model_name=self.model_name,
                 input_data=item.input_data,
                 prediction=item.prediction,
                 latency=total_latency * 1000,
@@ -46,8 +48,16 @@ class Model:
                 model_version=self.model.model_version,
                 wait_time=wait_time * 1000,
                 inference_time=timer.elapsed_time * 1000,
-                on_mlflow_log=self.on_mlflow_log,
-                on_prometheus_log=self.on_prometheus_log
+                loggers=self.loggers
+            )
+            
+            log_history(
+                model_name=self.model_name,
+                input_data=item.input_data,
+                prediction=item.prediction,
+                variant=self.variant,
+                model_version=self.model.model_version,
+                history_loggers=self.histories
             )
             
             item.future.set_result(pred)
